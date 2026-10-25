@@ -13,8 +13,6 @@
 
 <h2>Lineaarinen regressiomalli</h2>
 <p>Syötä regressiomallin parametrit ja x-arvo. Malli laskee ennusteen kaavalla:</p>
-<p>R² selittää regression vaihtelun. Mitä suurempi R² sitä parempi malli.</p>
-<p>Regressiosuoran sekä R² väri kertoo myös tuloksesta, pun huono, kelt ok vihr hyvä</p>
 <p><strong>y = a + b · x</strong></p>
 
 <label>a (vakiotermi):</label><br>
@@ -46,150 +44,11 @@
 <br><br>
 
 <button onclick="predict()">Laske ennuste</button>
-<button onclick="predictNext()">Laske seuraava ennuste</button>
-<button onclick="predictSeries()">Laske 10 ennustetta</button>
 
 <h3 id="result"></h3>
-
-<canvas id="scatterChart" width="400" height="300"></canvas>
-<canvas id="lineChart" width="400" height="300"></canvas>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<h3 id="regressionResult"></h3>
 
 <script>
-
-let scatterChart = null;
-let lineChart = null;
-let combinedChart = null;
-let lastPrediction = null;
-
-function drawScatter(xs, ys) {
-    const points = xs.map((x, i) => ({ x, y: ys[i] }));
-
-    if (scatterChart) scatterChart.destroy();
-
-    scatterChart = new Chart(document.getElementById("scatterChart"), {
-        type: "scatter",
-        data: {
-            datasets: [{
-                label: "Data",
-                data: points,
-                backgroundColor: "rgba(0, 120, 255, 0.7)"
-            }]
-        },
-        options: {
-            scales: {
-                x: { title: { display: true, text: "x" } },
-                y: { title: { display: true, text: "y" } }
-            }
-        }
-    });
-}
-
-function drawCombinedChart(xs, ys, a, b) {
-    const scatterPoints = xs.map((x, i) => ({ x, y: ys[i] }));
-
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-
-    const regressionPoints = [];
-    for (let x = minX; x <= maxX; x += (maxX - minX) / 100) {
-        regressionPoints.push({ x, y: a + b * x });
-    }
-
-    if (combinedChart) combinedChart.destroy();
-
-    combinedChart = new Chart(document.getElementById("scatterChart"), {
-        type: "scatter",
-        data: {
-            datasets: [
-                {
-                    label: "Data",
-                    data: scatterPoints,
-                    backgroundColor: "rgba(0, 120, 255, 0.7)"
-                },
-                {
-                    label: "Regressiosuora",
-                    data: regressionPoints,
-                    type: "line",
-                    borderColor: "red",
-                    borderWidth: 2,
-                    fill: false
-                }
-            ]
-        },
-        options: {
-            scales: {
-                x: { title: { display: true, text: "x" } },
-                y: { title: { display: true, text: "y" } }
-            }
-        }
-    });
-}
-
-// Datan käyttö regressioon
-function useDataForRegression() {
-    const xVar = document.getElementById("xSelect").value;
-    const yVar = document.getElementById("ySelect").value;
-
-    const xs = data.map(row => row[xVar]);
-    const ys = data.map(row => row[yVar]);
-
-    const { a, b } = linearRegression(xs, ys);
-    const r2 = computeR2(xs, ys, a, b);
-
-    document.getElementById("inputA").value = a.toFixed(4);
-    document.getElementById("inputB").value = b.toFixed(4);
-
-    document.getElementById("result").innerText =
-        `Regressiomalli laskettu datasta: y = ${a.toFixed(4)} + ${b.toFixed(4)}·x`;
-
-    // Piirrä kuvaaja
-    drawCombinedChart(xs, ys, a, b);
-
-    combinedChart.options.plugins.title = {
-        display: true,
-        text: `R² = ${r2.toFixed(4)}`
-    };
-    
-    combinedChart.options.plugins.annotation = {
-        annotations: {
-            r2text: {
-                type: 'label',
-                xValue: Math.min(...xs),
-                yValue: Math.max(...ys),
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                content: `R² = ${r2.toFixed(4)}`,
-                font: { size: 14 }
-            }
-        }
-    };
-
-    let color = "black";
-    if (r2 > 0.7) color = "green";
-    else if (r2 > 0.3) color = "orange";
-    else color = "red";
-
-    combinedChart.options.plugins.title = {
-        display: true,
-        text: `R² = ${r2.toFixed(4)}`,
-        color: color,
-        font: { size: 18, weight: "bold" }
-    };
-
-    let lineColor = "red";
-    if (r2 > 0.7) lineColor = "green";
-    else if (r2 > 0.3) lineColor = "orange";
-
-    combinedChart.data.datasets.forEach(ds => {
-        if (ds.label === "Regressiosuora") {
-            ds.borderColor = lineColor;
-        }
-    });
-    combinedChart.update();
-
-
-}
 
 // time_s,accuracy_m,altitude_m,distance_m
 const rawData = `
@@ -776,6 +635,22 @@ const data = rawData
 
 console.log(data);
 
+function useDataForRegression() {
+    const xKey = document.getElementById("xSelect").value;
+    const yKey = document.getElementById("ySelect").value;
+
+    const xs = data.map(row => row[xKey]);
+    const ys = data.map(row => row[yKey]);
+
+    const { a, b } = linearRegression(xs, ys);
+
+    document.getElementById("inputA").value = a.toFixed(4);
+    document.getElementById("inputB").value = b.toFixed(4);
+
+    document.getElementById("regressionResult").innerText =
+        `Regressio laskettu: a = ${a.toFixed(4)}, b = ${b.toFixed(4)}`;
+}
+
 // Laske lineaarinen regressio (OLS)
 function linearRegression(xs, ys) {
     const n = xs.length;
@@ -793,39 +668,6 @@ function linearRegression(xs, ys) {
     return { a, b };
 }
 
-function addPredictionPoint(x, y) {
-    if (!combinedChart) return;
-
-    // Poista vanha ennustepiste, jos se löytyy
-    combinedChart.data.datasets = combinedChart.data.datasets.filter(ds => ds.label !== "Ennuste");
-
-    // Lisää uusi ennustepiste
-    combinedChart.data.datasets.push({
-        label: "Ennuste",
-        data: [{ x: x, y: y }],
-        backgroundColor: "yellow",
-        borderColor: "black",
-        pointRadius: 6,
-        pointHoverRadius: 8
-    });
-    combinedChart.update();
-}
-
-function computeR2(xs, ys, a, b) {
-    const meanY = ys.reduce((a,b)=>a+b) / ys.length;
-
-    let ssTot = 0;
-    let ssRes = 0;
-
-    for (let i = 0; i < xs.length; i++) {
-        const yPred = a + b * xs[i];
-        ssTot += (ys[i] - meanY) ** 2;
-        ssRes += (ys[i] - yPred) ** 2;
-    }
-
-    return 1 - (ssRes / ssTot);
-}
-
 function predict() {
     const a = parseFloat(document.getElementById("inputA").value);
     const b = parseFloat(document.getElementById("inputB").value);
@@ -839,79 +681,6 @@ function predict() {
     const y = a + b * x;
     document.getElementById("result").innerText = "Ennuste y = " + y.toFixed(3);
     
-    // Talleta viimeisin ennuste    
-    lastPrediction = { x, y };
-
-    // Piirrä ennustepistekuvaajaan
-    addPredictionPoint(x, y);
-}
-
-function predictNext() {
-    if (!lastPrediction) {
-        document.getElementById("result").innerText = "Laske ensin ennuste.";
-        return;
-    }
-
-    const a = parseFloat(document.getElementById("inputA").value);
-    const b = parseFloat(document.getElementById("inputB").value);
-
-    const newX = lastPrediction.y;      // edellinen y → uusi x
-    const newY = a + b * newX;
-
-    lastPrediction = { x: newX, y: newY };
-
-    document.getElementById("result").innerText =
-        `Seuraava ennuste: x = ${newX.toFixed(3)}, y = ${newY.toFixed(3)}`;
-
-    addPredictionPoint(newX, newY);
-}
-
-function predictSeries() {
-    const a = parseFloat(document.getElementById("inputA").value);
-    const b = parseFloat(document.getElementById("inputB").value);
-    const x0 = parseFloat(document.getElementById("inputX").value);
-
-    if (isNaN(a) || isNaN(b) || isNaN(x0)) {
-        document.getElementById("result").innerText = "Anna kelvolliset numerot kaikkiin kenttiin.";
-        return;
-    }
-
-    let x = x0;
-    let series = [];
-
-    for (let i = 0; i < 10; i++) {
-        const y = a + b * x;
-        series.push({ x, y });
-        x = y; // seuraava askel
-    }
-
-    // Näytä viimeinen ennuste tekstinä
-    const last = series[series.length - 1];
-    document.getElementById("result").innerText =
-        `10 askeleen sarjan viimeinen ennuste: x = ${last.x.toFixed(3)}, y = ${last.y.toFixed(3)}`;
-
-    // Piirrä kaikki pisteet kuvaajaan
-    addSeriesPoints(series);
-}
-
-function addSeriesPoints(series) {
-    if (!combinedChart) return;
-
-    // Poista vanhat sarjapisteet
-    combinedChart.data.datasets = combinedChart.data.datasets.filter(ds => ds.label !== "Ennustesarja");
-
-    combinedChart.data.datasets.push({
-        label: "Ennustesarja",
-        data: series.map(p => ({ x: p.x, y: p.y })),
-        borderColor: "yellow",
-        backgroundColor: "yellow",
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        showLine: true,
-        borderWidth: 2
-    });
-
-    combinedChart.update();
 }
 
 </script>
